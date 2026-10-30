@@ -1171,9 +1171,9 @@ export const XongleApp: React.FC<XongleAppProps> = ({
             <span className="text-[#34A853]">l</span>
             <span className="text-[#EA4335]">e</span>
           </h1>
-          <p className="mt-2 text-xs sm:text-sm text-neutral-500 max-w-md leading-relaxed select-text">
+          <p className="sr-only">
             Official real-time search engine at{' '}
-            <a href="https://xongle.xyz/" className="text-neutral-700 font-medium hover:underline">
+            <a href="https://xongle.xyz/">
               xongle.xyz
             </a>{' '}
             for public Xonddit communities, Uzbek Q&amp;A threads, and AI-grounded discussions.
@@ -1199,7 +1199,7 @@ export const XongleApp: React.FC<XongleAppProps> = ({
                 setQuery(e.target.value);
                 setShowSuggestions(true);
               }}
-              placeholder="Search Xonddit (masalan: Linux qanday o‘rganiladi, Kompyuter muammosi)..."
+              placeholder="Search Xonddit..."
               className="w-full text-sm sm:text-base text-neutral-900 placeholder-neutral-400 focus:outline-hidden bg-transparent"
               autoFocus
             />
@@ -1216,13 +1216,13 @@ export const XongleApp: React.FC<XongleAppProps> = ({
           {renderSuggestionsDropdown()}
         </form>
 
-        {/* Crawlable Uzbek & Tech Topic Hubs Directory */}
+        {/* Crawlable Uzbek & Tech Topic Hubs Directory (kept in DOM via sr-only and moved visibly to /about) */}
         <section
           aria-label="O‘zbekcha Mavzular va Savol-Javob Yo‘nalishlari"
-          className="w-full max-w-xl mb-6"
+          className="sr-only"
         >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">
+          <div>
+            <span>
               Dolzarb Mavzular va AI Javoblar (Topic Hubs)
             </span>
             <a
@@ -1233,12 +1233,11 @@ export const XongleApp: React.FC<XongleAppProps> = ({
                   onNavigateToXonddit();
                 }
               }}
-              className="text-[11px] font-semibold text-orange-600 hover:underline"
             >
               Barcha c/ jamoalar &rarr;
             </a>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+          <div>
             {CURATED_TOPIC_HUBS.map((hub) => (
               <a
                 key={hub.slug}
@@ -1256,7 +1255,6 @@ export const XongleApp: React.FC<XongleAppProps> = ({
                     onSelectTopicSlug(hub.slug);
                   }
                 }}
-                className="p-2.5 rounded-xl border border-neutral-200 hover:border-blue-300 bg-neutral-50/70 hover:bg-blue-50/40 text-neutral-800 font-semibold truncate"
                 title={hub.titleUz}
               >
                 {hub.titleUz.split('—')[0].trim()}
@@ -1370,17 +1368,17 @@ export const XongleApp: React.FC<XongleAppProps> = ({
         </section>
       </main>
 
-      {/* Official Identity & Internal Link Footer */}
-      <footer className="border-t border-neutral-200 bg-neutral-50 px-4 sm:px-8 py-4 text-xs text-neutral-500 select-text pb-20 md:pb-4">
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+      {/* Official Identity & Internal Link Footer (visually hidden on homepage, visible on /about) */}
+      <footer className="sr-only">
+        <div>
           <div>
-            <strong className="text-neutral-800">Xongle</strong> (
-            <a href="https://xongle.xyz/" className="text-blue-600 hover:underline">
+            <strong>Xongle</strong> (
+            <a href="https://xongle.xyz/">
               https://xongle.xyz/
             </a>
             ) — Real-time community &amp; discussion search engine for Xonddit.
           </div>
-          <nav aria-label="Footer Navigation" className="flex items-center flex-wrap gap-4 font-medium">
+          <nav aria-label="Footer Navigation">
             <a
               href="/about"
               onClick={(e) => {
@@ -1389,7 +1387,6 @@ export const XongleApp: React.FC<XongleAppProps> = ({
                   onSwitchApp('about');
                 }
               }}
-              className="hover:text-neutral-900 hover:underline"
             >
               About Xongle &amp; FAQ
             </a>
@@ -1401,7 +1398,6 @@ export const XongleApp: React.FC<XongleAppProps> = ({
                   onNavigateToXonddit();
                 }
               }}
-              className="hover:text-neutral-900 hover:underline"
             >
               Xonddit Communities
             </a>

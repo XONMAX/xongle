@@ -21,6 +21,11 @@ import {
   FirebaseDomainStatus,
   FIREBASE_CONSOLE_AUTH_SETTINGS_URL,
 } from '../firebase/config';
+import {
+  CURATED_TOPIC_HUBS,
+  BASELINE_PUBLIC_POSTS,
+  BASELINE_PUBLIC_COMMUNITIES,
+} from '../seo/uzbekSearch';
 import type { LegalTab } from './LegalPrivacyModal';
 
 interface AboutXonglePageProps {
@@ -239,6 +244,92 @@ export const AboutXonglePage: React.FC<AboutXonglePageProps> = ({
                 <ExternalLink size={12} />
               </a>
             </article>
+          </div>
+        </section>
+
+        {/* Moved Directory: Topic Hubs, Featured Discussions & Public Communities */}
+        <section aria-labelledby="topic-hubs-directory-heading" className="space-y-6">
+          <div className="space-y-3">
+            <h2
+              id="topic-hubs-directory-heading"
+              className="text-lg sm:text-xl font-bold text-neutral-900 tracking-tight"
+            >
+              O‘zbekcha Mavzular va Yo‘nalishlar (Topic Hubs)
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              {CURATED_TOPIC_HUBS.map((hub) => (
+                <a
+                  key={hub.slug}
+                  href={`/topics/${hub.slug}`}
+                  onClick={(e) => {
+                    if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) {
+                      e.preventDefault();
+                      onSwitchApp('xongle', { topic: hub.slug });
+                    }
+                  }}
+                  className="p-3.5 rounded-xl border border-neutral-200 hover:border-blue-300 bg-neutral-50/70 block space-y-1"
+                >
+                  <div className="font-bold text-neutral-900">{hub.titleUz}</div>
+                  <p className="text-neutral-600 leading-relaxed">{hub.descriptionUz}</p>
+                </a>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-base sm:text-lg font-bold text-neutral-900 tracking-tight">
+              Dolzarb O‘zbekcha Savol-Javob va Muhokamalar (Featured Discussions)
+            </h3>
+            <ul className="space-y-2 text-xs text-neutral-700">
+              {BASELINE_PUBLIC_POSTS.map((post) => (
+                <li
+                  key={post.id}
+                  className="p-3 rounded-xl border border-neutral-200 bg-white leading-relaxed"
+                >
+                  <a
+                    href={`/discussions/${post.id}`}
+                    onClick={(e) => {
+                      if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) {
+                        e.preventDefault();
+                        onSwitchApp('xonddit', { p: post.id, c: post.communitySlug });
+                      }
+                    }}
+                    className="font-bold text-blue-700 hover:underline"
+                  >
+                    {post.title}
+                  </a>{' '}
+                  <span className="text-neutral-500">
+                    (<code>c/{post.communitySlug}</code> · muallif: <code>u/{post.authorName}</code> ·{' '}
+                    {post.score} ball)
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-base sm:text-lg font-bold text-neutral-900 tracking-tight">
+              Mavjud Ochiq Jamoalar (Public Communities)
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+              {BASELINE_PUBLIC_COMMUNITIES.map((comm) => (
+                <a
+                  key={comm.slug}
+                  href={`/c/${comm.slug}`}
+                  onClick={(e) => {
+                    if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) {
+                      e.preventDefault();
+                      onSwitchApp('xonddit', { c: comm.slug });
+                    }
+                  }}
+                  className="p-3 rounded-xl border border-neutral-200 bg-neutral-50/60 hover:border-orange-300 block"
+                >
+                  <span className="font-mono font-bold text-orange-700">c/{comm.slug}</span> —{' '}
+                  <strong className="text-neutral-900">{comm.name}:</strong>{' '}
+                  <span className="text-neutral-600">{comm.description}</span>
+                </a>
+              ))}
+            </div>
           </div>
         </section>
 
