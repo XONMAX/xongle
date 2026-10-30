@@ -1768,7 +1768,13 @@ async function startServer() {
 
   // Create Vite server in middleware mode
   const vite = await createViteServer({
-    server: { middlewareMode: true },
+    server: {
+      middlewareMode: true,
+      host: true,
+      port: 3000,
+      strictPort: true,
+      allowedHosts: true,
+    },
     appType: 'spa',
   });
 
