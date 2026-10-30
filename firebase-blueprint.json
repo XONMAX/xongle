@@ -1,0 +1,276 @@
+{
+  "entities": {
+    "Community": {
+      "title": "Community",
+      "description": "A Xonddit community channel",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "minLength": 2, "maxLength": 30 },
+        "slug": { "type": "string", "minLength": 2, "maxLength": 30, "pattern": "^[a-z0-9_]+$" },
+        "title": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "description": { "type": "string", "maxLength": 500 },
+        "iconUrl": { "type": "string", "maxLength": 2048 },
+        "bannerUrl": { "type": "string", "maxLength": 2048 },
+        "creatorId": { "type": "string", "maxLength": 128 },
+        "creatorName": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "postCount": { "type": "number" },
+        "isPublic": { "type": "boolean" }
+      },
+      "required": ["name", "slug", "title", "description", "creatorId", "creatorName", "createdAt", "postCount", "isPublic"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "A post published in a community",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "minLength": 3, "maxLength": 300 },
+        "body": { "type": "string", "maxLength": 20000 },
+        "type": { "type": "string", "enum": ["text", "link", "image"] },
+        "linkUrl": { "type": "string", "maxLength": 2048 },
+        "imageUrl": { "type": "string", "maxLength": 200000 },
+        "communityId": { "type": "string", "maxLength": 128 },
+        "communitySlug": { "type": "string", "maxLength": 50 },
+        "communityName": { "type": "string", "maxLength": 50 },
+        "authorId": { "type": "string", "maxLength": 128 },
+        "authorName": { "type": "string", "maxLength": 50 },
+        "score": { "type": "number" },
+        "upvotes": { "type": "number" },
+        "downvotes": { "type": "number" },
+        "commentCount": { "type": "number" },
+        "flair": { "type": "string", "maxLength": 30 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "isPublic": { "type": "boolean" }
+      },
+      "required": ["title", "type", "communityId", "communitySlug", "communityName", "authorId", "authorName", "score", "commentCount", "createdAt", "isPublic"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "A comment on a post",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "postId": { "type": "string", "maxLength": 128 },
+        "communityId": { "type": "string", "maxLength": 128 },
+        "authorId": { "type": "string", "maxLength": 128 },
+        "authorName": { "type": "string", "maxLength": 50 },
+        "content": { "type": "string", "minLength": 1, "maxLength": 5000 },
+        "parentId": { "type": "string", "maxLength": 128 },
+        "score": { "type": "number" },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["postId", "communityId", "authorId", "authorName", "content", "score", "createdAt"]
+    },
+    "Vote": {
+      "title": "Vote",
+      "description": "A vote cast by a user on a post or comment",
+      "type": "object",
+      "properties": {
+        "targetId": { "type": "string", "maxLength": 128 },
+        "targetType": { "type": "string", "enum": ["post", "comment"] },
+        "userId": { "type": "string", "maxLength": 128 },
+        "direction": { "type": "number" },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["targetId", "targetType", "userId", "direction", "updatedAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with username and display name",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "uid": { "type": "string", "maxLength": 128 },
+        "username": { "type": "string", "minLength": 3, "maxLength": 30, "pattern": "^[a-zA-Z0-9_]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 50 },
+        "bio": { "type": "string", "maxLength": 300 },
+        "photoURL": { "type": "string", "maxLength": 2048 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["uid", "username", "displayName", "updatedAt"]
+    },
+    "Tweet": {
+      "title": "Tweet",
+      "description": "A public tweet or thread on Xonwitter",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "content": { "type": "string", "minLength": 1, "maxLength": 280 },
+        "authorId": { "type": "string", "maxLength": 128 },
+        "authorName": { "type": "string", "maxLength": 50 },
+        "authorHandle": { "type": "string", "minLength": 2, "maxLength": 30, "pattern": "^[a-zA-Z0-9_]+$" },
+        "authorPhotoURL": { "type": "string", "maxLength": 2048 },
+        "mediaUrl": { "type": "string", "maxLength": 2048 },
+        "likesCount": { "type": "number" },
+        "retweetsCount": { "type": "number" },
+        "repliesCount": { "type": "number" },
+        "replyToId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "isPublic": { "type": "boolean" }
+      },
+      "required": ["content", "authorId", "authorName", "authorHandle", "likesCount", "retweetsCount", "repliesCount", "createdAt", "isPublic"]
+    },
+    "SlideTemplate": {
+      "title": "SlideTemplate",
+      "description": "Custom presentation template created by individuals or businessmen",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 500 },
+        "category": { "type": "string", "maxLength": 50 },
+        "authorId": { "type": "string", "maxLength": 128 },
+        "authorName": { "type": "string", "maxLength": 50 },
+        "authorRole": { "type": "string", "maxLength": 50 },
+        "isPublic": { "type": "boolean" },
+        "themeColor": { "type": "string", "maxLength": 30 },
+        "slidesCount": { "type": "number" },
+        "slidesJson": { "type": "string", "maxLength": 50000 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["title", "authorId", "authorName", "isPublic", "themeColor", "slidesCount", "slidesJson", "createdAt", "updatedAt"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "Private or group chat conversation metadata",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "enum": ["private", "group", "xonmini"] },
+        "title": { "type": "string", "maxLength": 120 },
+        "participantIds": { "type": "array", "items": { "type": "string" } },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "type", "createdAt", "updatedAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Chat or Xonmini conversation message record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "conversationId": { "type": "string", "maxLength": 128 },
+        "senderId": { "type": "string", "maxLength": 128 },
+        "senderName": { "type": "string", "maxLength": 80 },
+        "recipientId": { "type": "string", "maxLength": 128 },
+        "content": { "type": "string", "maxLength": 10000 },
+        "replyToId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "conversationId", "senderId", "content", "createdAt"]
+    },
+    "BackupRecord": {
+      "title": "BackupRecord",
+      "description": "Owner backup metadata record stored in Firestore",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "fileName": { "type": "string", "maxLength": 200 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "completedAt": { "type": "string", "maxLength": 50 },
+        "createdBy": { "type": "string", "maxLength": 160 },
+        "status": { "type": "string", "enum": ["in_progress", "completed", "uploaded", "failed", "restored"] },
+        "sizeBytes": { "type": "number" },
+        "sha256": { "type": "string", "maxLength": 128 },
+        "driveFileId": { "type": "string", "maxLength": 200 },
+        "driveFolderId": { "type": "string", "maxLength": 200 },
+        "driveFolderName": { "type": "string", "maxLength": 120 },
+        "driveWebViewLink": { "type": "string", "maxLength": 500 },
+        "countsJson": { "type": "string", "maxLength": 5000 },
+        "includedCategoriesJson": { "type": "string", "maxLength": 5000 },
+        "excludedCategoriesJson": { "type": "string", "maxLength": 5000 },
+        "error": { "type": "string", "maxLength": 1000 }
+      },
+      "required": ["id", "fileName", "createdAt", "createdBy", "status", "sizeBytes", "sha256"]
+    },
+    "SiteSetting": {
+      "title": "SiteSetting",
+      "description": "Global site configuration managed by the owner",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "siteName": { "type": "string", "maxLength": 120 },
+        "metaDescription": { "type": "string", "maxLength": 500 },
+        "announcementBanner": { "type": "string", "maxLength": 500 },
+        "defaultTheme": { "type": "string", "maxLength": 20 },
+        "maxUploadSize": { "type": "string", "maxLength": 20 },
+        "allowRegistrations": { "type": "boolean" },
+        "strictSafeSearch": { "type": "boolean" },
+        "maintenanceMode": { "type": "boolean" },
+        "updatedAt": { "type": "string", "maxLength": 50 },
+        "updatedBy": { "type": "string", "maxLength": 160 }
+      },
+      "required": ["id", "updatedAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Owner administrative and backup/restore audit log entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "action": { "type": "string", "maxLength": 120 },
+        "actorEmail": { "type": "string", "maxLength": 160 },
+        "details": { "type": "string", "maxLength": 2000 },
+        "status": { "type": "string", "maxLength": 40 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "action", "actorEmail", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile account records"
+    },
+    "/communities/{communityId}": {
+      "schema": "Community",
+      "description": "Communities created by Xonddit members"
+    },
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Posts published into communities"
+    },
+    "/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Comments on published posts"
+    },
+    "/votes/{voteId}": {
+      "schema": "Vote",
+      "description": "Votes recorded for posts and comments"
+    },
+    "/tweets/{tweetId}": {
+      "schema": "Tweet",
+      "description": "Tweets and threads published on Xonwitter"
+    },
+    "/slide_templates/{templateId}": {
+      "schema": "SlideTemplate",
+      "description": "Public and private presentation templates created by users and businessmen"
+    },
+    "/conversations/{conversationId}": {
+      "schema": "Conversation",
+      "description": "Private, group, and Xonmini conversation records"
+    },
+    "/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Messages belonging to conversations"
+    },
+    "/backups/{backupId}": {
+      "schema": "BackupRecord",
+      "description": "Owner backup history and verification metadata"
+    },
+    "/site_settings/{settingId}": {
+      "schema": "SiteSetting",
+      "description": "Owner site settings and configuration"
+    },
+    "/audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Owner security, backup, and restore audit logs"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Xonstorage & Xongle Suite",
+  "description": "Xonstorage local & networked USB, HDD, SSD, and Home Server storage management platform in Uzbek, alongside Xongle search and Xonddit community.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /topics/
+Allow: /c/
+Allow: /discussions/
+Allow: /questions/
+Disallow: /api/
+Disallow: /owner
+Disallow: /admin
+Disallow: /ws/
+Disallow: /auth-bridge
+
+Sitemap: https://xongle.xyz/sitemap.xml

@@ -1,0 +1,31 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Deny all by default
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid is string;
+    }
+
+    function isSafeImageUpload(fileName) {
+      return request.resource != null
+        && request.resource.size > 0
+        && request.resource.size <= 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp|gif)')
+        && fileName.matches('^[a-zA-Z0-9_\\-]+\\.(jpg|jpeg|png|webp|gif)$');
+    }
+
+    // User-scoped profile and post image uploads
+    match /users/{userId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isSignedIn()
+        && request.auth.uid == userId
+        && isSafeImageUpload(fileName);
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+  }
+}
+

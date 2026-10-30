@@ -1,0 +1,496 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny All (Deny-by-Default RLS)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Connection Health Check (Read-Only)
+    match /test/connection {
+      allow get: if true;
+      allow list, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid is string && request.auth.uid.size() > 0;
+    }
+
+    function isOwner() {
+      return isSignedIn()
+        && request.auth.token.email_verified == true
+        && (
+          request.auth.token.email == 'aminbek785@gmail.com' ||
+          request.auth.token.email == 'crownsmpuz@gmail.com'
+        );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Prevent XSS via javascript: or data:text/html or SVG URLs
+    function isSafeHttpUrl(url) {
+      return url is string
+        && url.size() <= 2048
+        && (url == '' || url.matches('^https?://[^\\s<>"]+$'));
+    }
+
+    function isSafeImageSource(url) {
+      return url is string
+        && url.size() <= 200000
+        && (
+          url == '' ||
+          url.matches('^https?://[^\\s<>"]+$') ||
+          url.matches('^data:image/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=]+$')
+        );
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // -------------------------------------------------------------
+    // COMMUNITIES
+    // -------------------------------------------------------------
+    function isValidCommunity(data) {
+      return data.keys().hasAll(['name', 'slug', 'title', 'description', 'creatorId', 'creatorName', 'createdAt', 'postCount', 'isPublic'])
+        && data.keys().hasOnly(['id', 'name', 'slug', 'title', 'description', 'iconUrl', 'bannerUrl', 'creatorId', 'creatorName', 'createdAt', 'postCount', 'isPublic', 'memberCount', 'isVerified'])
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 30
+        && data.slug is string && data.slug.size() >= 2 && data.slug.size() <= 30 && data.slug.matches('^[a-z0-9_]+$')
+        && data.title is string && data.title.size() >= 2 && data.title.size() <= 80
+        && data.description is string && data.description.size() <= 500
+        && (!('iconUrl' in data) || isSafeHttpUrl(data.iconUrl))
+        && (!('bannerUrl' in data) || isSafeHttpUrl(data.bannerUrl))
+        && data.creatorId == request.auth.uid
+        && data.creatorName is string && data.creatorName.size() >= 1 && data.creatorName.size() <= 50
+        && data.postCount is number && data.postCount == 0
+        && (!('memberCount' in data) || (data.memberCount is number && data.memberCount >= 0 && data.memberCount <= 1))
+        && (!('isVerified' in data) || data.isVerified == false)
+        && data.isPublic is bool;
+    }
+
+    match /communities/{communityId} {
+      allow get, list: if resource.data.isPublic == true
+        || (isSignedIn() && resource.data.creatorId == request.auth.uid)
+        || isOwner();
+      allow create: if isSignedIn()
+        && isValidId(communityId)
+        && (
+          (isValidCommunity(incoming()) && incoming().creatorId == request.auth.uid)
+          || isOwner()
+        );
+      allow update: if isSignedIn()
+        && isValidId(communityId)
+        && (
+          // Creator updating metadata (cannot tamper with slug, creatorId, createdAt, or isVerified)
+          (existing().creatorId == request.auth.uid
+            && incoming().creatorId == existing().creatorId
+            && incoming().createdAt == existing().createdAt
+            && incoming().slug == existing().slug
+            && (!('iconUrl' in incoming()) || isSafeHttpUrl(incoming().iconUrl))
+            && (!('bannerUrl' in incoming()) || isSafeHttpUrl(incoming().bannerUrl))
+            && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'iconUrl', 'bannerUrl', 'postCount', 'isPublic']))
+          ||
+          // Incrementing / decrementing post count by at most 1 when a post is created or deleted
+          (incoming().diff(existing()).affectedKeys().hasOnly(['postCount'])
+            && incoming().postCount is number
+            && incoming().postCount >= 0
+            && incoming().postCount >= existing().postCount - 1
+            && incoming().postCount <= existing().postCount + 1)
+          ||
+          // Owner updating verification status, memberCount, or restoring backup
+          isOwner()
+        );
+      allow delete: if isSignedIn()
+        && isValidId(communityId)
+        && (existing().creatorId == request.auth.uid || isOwner());
+    }
+
+    // -------------------------------------------------------------
+    // POSTS
+    // -------------------------------------------------------------
+    function isValidPost(data) {
+      return data.keys().hasAll(['title', 'type', 'communityId', 'communitySlug', 'communityName', 'authorId', 'authorName', 'score', 'commentCount', 'createdAt', 'isPublic'])
+        && data.keys().hasOnly(['id', 'title', 'body', 'type', 'linkUrl', 'imageUrl', 'communityId', 'communitySlug', 'communityName', 'authorId', 'authorName', 'score', 'upvotes', 'downvotes', 'commentCount', 'flair', 'createdAt', 'isPublic'])
+        && data.title is string && data.title.size() >= 3 && data.title.size() <= 300
+        && (!('body' in data) || (data.body is string && data.body.size() <= 20000))
+        && (data.type == 'text' || data.type == 'link' || data.type == 'image')
+        && (!('linkUrl' in data) || isSafeHttpUrl(data.linkUrl))
+        && (!('imageUrl' in data) || isSafeImageSource(data.imageUrl))
+        && data.communityId is string && isValidId(data.communityId)
+        && exists(/databases/$(database)/documents/communities/$(data.communityId))
+        && data.communitySlug is string && data.communitySlug.size() >= 2 && data.communitySlug.size() <= 50 && data.communitySlug.matches('^[a-z0-9_]+$')
+        && data.communityName is string && data.communityName.size() <= 50
+        && data.authorId == request.auth.uid
+        && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 50
+        && data.score is number && (data.score == 0 || data.score == 1)
+        && (!('upvotes' in data) || (data.upvotes is number && (data.upvotes == 0 || data.upvotes == 1)))
+        && (!('downvotes' in data) || (data.downvotes is number && data.downvotes == 0))
+        && data.commentCount is number && data.commentCount == 0
+        && (!('flair' in data) || (data.flair is string && data.flair.size() <= 30))
+        && data.isPublic is bool;
+    }
+
+    match /posts/{postId} {
+      allow get, list: if resource.data.isPublic == true
+        || (isSignedIn() && resource.data.authorId == request.auth.uid)
+        || isOwner();
+      allow create: if isSignedIn()
+        && isValidId(postId)
+        && (
+          (isValidPost(incoming()) && incoming().authorId == request.auth.uid)
+          || isOwner()
+        );
+      allow update: if isSignedIn()
+        && isValidId(postId)
+        && (
+          // Author editing content (cannot tamper with authorId, createdAt, communityId, or score)
+          (existing().authorId == request.auth.uid
+            && incoming().authorId == existing().authorId
+            && incoming().createdAt == existing().createdAt
+            && incoming().communityId == existing().communityId
+            && incoming().title is string && incoming().title.size() >= 3 && incoming().title.size() <= 300
+            && (!('body' in incoming()) || (incoming().body is string && incoming().body.size() <= 20000))
+            && (!('linkUrl' in incoming()) || isSafeHttpUrl(incoming().linkUrl))
+            && (!('imageUrl' in incoming()) || isSafeImageSource(incoming().imageUrl))
+            && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'body', 'flair', 'linkUrl', 'imageUrl', 'isPublic']))
+          ||
+          // Authenticated voter updating score by bounded delta [-2, +2]
+          (incoming().diff(existing()).affectedKeys().hasOnly(['score', 'upvotes', 'downvotes'])
+            && incoming().score is number
+            && incoming().score >= existing().score - 2
+            && incoming().score <= existing().score + 2)
+          ||
+          // Incrementing / decrementing commentCount by at most 1
+          (incoming().diff(existing()).affectedKeys().hasOnly(['commentCount'])
+            && incoming().commentCount is number
+            && incoming().commentCount >= 0
+            && incoming().commentCount >= existing().commentCount - 1
+            && incoming().commentCount <= existing().commentCount + 1)
+          ||
+          isOwner()
+        );
+      allow delete: if isSignedIn()
+        && isValidId(postId)
+        && (existing().authorId == request.auth.uid || isOwner());
+    }
+
+    // -------------------------------------------------------------
+    // COMMENTS
+    // -------------------------------------------------------------
+    function isValidComment(data) {
+      return data.keys().hasAll(['postId', 'communityId', 'authorId', 'authorName', 'content', 'score', 'createdAt'])
+        && data.keys().hasOnly(['id', 'postId', 'communityId', 'authorId', 'authorName', 'content', 'parentId', 'score', 'createdAt'])
+        && data.postId is string && isValidId(data.postId)
+        && exists(/databases/$(database)/documents/posts/$(data.postId))
+        && data.communityId is string && isValidId(data.communityId)
+        && data.authorId == request.auth.uid
+        && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 50
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 5000
+        && (!('parentId' in data) || (data.parentId is string && isValidId(data.parentId)))
+        && data.score is number && (data.score == 0 || data.score == 1);
+    }
+
+    match /comments/{commentId} {
+      allow get, list: if true;
+      allow create: if isSignedIn()
+        && isValidId(commentId)
+        && (
+          (isValidComment(incoming()) && incoming().authorId == request.auth.uid)
+          || isOwner()
+        );
+      allow update: if isSignedIn()
+        && isValidId(commentId)
+        && (
+          // Author editing content
+          (existing().authorId == request.auth.uid
+            && incoming().authorId == existing().authorId
+            && incoming().createdAt == existing().createdAt
+            && incoming().postId == existing().postId
+            && incoming().content is string && incoming().content.size() >= 1 && incoming().content.size() <= 5000
+            && incoming().diff(existing()).affectedKeys().hasOnly(['content']))
+          ||
+          // Voting score update bounded by [-2, +2]
+          (incoming().diff(existing()).affectedKeys().hasOnly(['score'])
+            && incoming().score is number
+            && incoming().score >= existing().score - 2
+            && incoming().score <= existing().score + 2)
+          ||
+          isOwner()
+        );
+      allow delete: if isSignedIn()
+        && isValidId(commentId)
+        && (existing().authorId == request.auth.uid || isOwner());
+    }
+
+    // -------------------------------------------------------------
+    // USERS (PROFILES & PRIVATE SUBCOLLECTIONS)
+    // -------------------------------------------------------------
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'username', 'displayName', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'uid', 'username', 'displayName', 'bio', 'photoURL', 'updatedAt'])
+        && data.uid == request.auth.uid
+        && data.username is string && data.username.size() >= 3 && data.username.size() <= 30 && data.username.matches('^[a-zA-Z0-9_]+$')
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 50
+        && (!('bio' in data) || (data.bio is string && data.bio.size() <= 300))
+        && (!('photoURL' in data) || isSafeImageSource(data.photoURL));
+    }
+
+    match /users/{userId} {
+      allow get, list: if true;
+      allow create, update: if isSignedIn()
+        && isValidId(userId)
+        && (
+          (isValidUser(incoming()) && request.auth.uid == userId)
+          || isOwner()
+        );
+      allow delete: if isSignedIn()
+        && isValidId(userId)
+        && (request.auth.uid == userId || isOwner());
+
+      // Strictly lock user private files & folders to user or verified owner backup/restore
+      match /files/{fileId} {
+        allow read, delete: if isSignedIn() && (request.auth.uid == userId || isOwner()) && isValidId(fileId);
+        allow create, update: if isSignedIn()
+          && isValidId(fileId)
+          && (
+            (request.auth.uid == userId
+              && incoming().keys().hasOnly(['id', 'name', 'type', 'size', 'content', 'folderId', 'createdAt', 'updatedAt'])
+              && incoming().name is string && incoming().name.size() >= 1 && incoming().name.size() <= 120)
+            || isOwner()
+          );
+      }
+
+      match /folders/{folderId} {
+        allow read, delete: if isSignedIn() && (request.auth.uid == userId || isOwner()) && isValidId(folderId);
+        allow create, update: if isSignedIn()
+          && isValidId(folderId)
+          && (
+            (request.auth.uid == userId
+              && incoming().keys().hasOnly(['id', 'name', 'parentId', 'createdAt', 'updatedAt'])
+              && incoming().name is string && incoming().name.size() >= 1 && incoming().name.size() <= 120)
+            || isOwner()
+          );
+      }
+    }
+
+    // -------------------------------------------------------------
+    // VOTES
+    // -------------------------------------------------------------
+    function isValidVote(data, voteId) {
+      return data.keys().hasAll(['targetId', 'targetType', 'userId', 'direction', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'targetId', 'targetType', 'userId', 'direction', 'updatedAt'])
+        && data.targetId is string && isValidId(data.targetId)
+        && (data.targetType == 'post' || data.targetType == 'comment')
+        && data.userId == request.auth.uid
+        && voteId == (request.auth.uid + '_' + data.targetId)
+        && (data.direction == 1 || data.direction == -1);
+    }
+
+    match /votes/{voteId} {
+      allow get: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid || isOwner());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isOwner());
+      allow create, update: if isSignedIn()
+        && isValidId(voteId)
+        && (
+          (isValidVote(incoming(), voteId) && incoming().userId == request.auth.uid)
+          || isOwner()
+        );
+      allow delete: if isSignedIn()
+        && isValidId(voteId)
+        && (existing().userId == request.auth.uid || isOwner());
+    }
+
+    // -------------------------------------------------------------
+    // TWEETS (XONWITTER)
+    // -------------------------------------------------------------
+    function isValidTweet(data) {
+      return data.keys().hasAll(['content', 'authorId', 'authorName', 'authorHandle', 'likesCount', 'retweetsCount', 'repliesCount', 'createdAt', 'isPublic'])
+        && data.keys().hasOnly(['id', 'content', 'authorId', 'authorName', 'authorHandle', 'authorPhotoURL', 'mediaUrl', 'likesCount', 'retweetsCount', 'repliesCount', 'replyToId', 'createdAt', 'isPublic', 'hashtags'])
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 280
+        && data.authorId == request.auth.uid
+        && data.authorName is string && data.authorName.size() <= 50
+        && data.authorHandle is string && data.authorHandle.size() >= 2 && data.authorHandle.size() <= 30 && data.authorHandle.matches('^[a-zA-Z0-9_]+$')
+        && (!('authorPhotoURL' in data) || isSafeImageSource(data.authorPhotoURL))
+        && (!('mediaUrl' in data) || isSafeHttpUrl(data.mediaUrl))
+        && data.likesCount is number && data.likesCount == 0
+        && data.retweetsCount is number && data.retweetsCount == 0
+        && data.repliesCount is number && data.repliesCount == 0
+        && (!('replyToId' in data) || (data.replyToId is string && isValidId(data.replyToId)))
+        && data.isPublic is bool;
+    }
+
+    match /tweets/{tweetId} {
+      allow get, list: if resource.data.isPublic == true
+        || (isSignedIn() && resource.data.authorId == request.auth.uid)
+        || isOwner();
+      allow create: if isSignedIn()
+        && isValidId(tweetId)
+        && (
+          (isValidTweet(incoming()) && incoming().authorId == request.auth.uid)
+          || isOwner()
+        );
+      allow update: if isSignedIn()
+        && isValidId(tweetId)
+        && (
+          // Author editing content/media
+          (existing().authorId == request.auth.uid
+            && incoming().authorId == existing().authorId
+            && incoming().createdAt == existing().createdAt
+            && incoming().content is string && incoming().content.size() >= 1 && incoming().content.size() <= 280
+            && (!('mediaUrl' in incoming()) || isSafeHttpUrl(incoming().mediaUrl))
+            && incoming().diff(existing()).affectedKeys().hasOnly(['content', 'mediaUrl', 'isPublic']))
+          ||
+          // Interactions: likes, retweets, replies counters bounded by [-1, +1]
+          (incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'retweetsCount', 'repliesCount'])
+            && incoming().likesCount is number && incoming().likesCount >= 0
+            && incoming().likesCount >= existing().likesCount - 1 && incoming().likesCount <= existing().likesCount + 1
+            && incoming().retweetsCount is number && incoming().retweetsCount >= 0
+            && incoming().retweetsCount >= existing().retweetsCount - 1 && incoming().retweetsCount <= existing().retweetsCount + 1
+            && incoming().repliesCount is number && incoming().repliesCount >= 0
+            && incoming().repliesCount >= existing().repliesCount - 1 && incoming().repliesCount <= existing().repliesCount + 1)
+          ||
+          isOwner()
+        );
+      allow delete: if isSignedIn()
+        && isValidId(tweetId)
+        && (existing().authorId == request.auth.uid || isOwner());
+    }
+
+    // -------------------------------------------------------------
+    // SLIDE TEMPLATES (XONSLIDES)
+    // -------------------------------------------------------------
+    function isValidSlideTemplate(data) {
+      return data.keys().hasAll(['title', 'authorId', 'authorName', 'isPublic', 'themeColor', 'slidesCount', 'slidesJson', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'title', 'description', 'category', 'authorId', 'authorName', 'authorRole', 'isPublic', 'themeColor', 'slidesCount', 'slidesJson', 'createdAt', 'updatedAt'])
+        && data.title is string && data.title.size() >= 2 && data.title.size() <= 100
+        && (!('description' in data) || (data.description is string && data.description.size() <= 500))
+        && (!('category' in data) || (data.category is string && data.category.size() <= 50))
+        && data.authorId == request.auth.uid
+        && data.authorName is string && data.authorName.size() <= 50
+        && (!('authorRole' in data) || (data.authorRole is string && data.authorRole.size() <= 50))
+        && data.isPublic is bool
+        && data.themeColor is string && data.themeColor.size() <= 30
+        && data.slidesCount is number && data.slidesCount >= 1 && data.slidesCount <= 30
+        && data.slidesJson is string && data.slidesJson.size() <= 50000
+        && data.createdAt is string && data.createdAt.size() <= 50
+        && data.updatedAt is string && data.updatedAt.size() <= 50;
+    }
+
+    match /slide_templates/{templateId} {
+      allow get, list: if resource.data.isPublic == true
+        || (isSignedIn() && resource.data.authorId == request.auth.uid)
+        || isOwner();
+      allow create: if isSignedIn()
+        && isValidId(templateId)
+        && (
+          (isValidSlideTemplate(incoming()) && incoming().authorId == request.auth.uid)
+          || isOwner()
+        );
+      allow update: if isSignedIn()
+        && isValidId(templateId)
+        && (
+          (existing().authorId == request.auth.uid
+            && isValidSlideTemplate(incoming())
+            && incoming().authorId == existing().authorId
+            && incoming().createdAt == existing().createdAt)
+          || isOwner()
+        );
+      allow delete: if isSignedIn()
+        && isValidId(templateId)
+        && (existing().authorId == request.auth.uid || isOwner());
+    }
+
+    // -------------------------------------------------------------
+    // CONVERSATIONS & MESSAGES (STRICT PARTICIPANT & SCHEMA VALIDATION)
+    // -------------------------------------------------------------
+    function isValidConversation(data) {
+      return data.keys().hasAll(['createdBy', 'participantIds', 'createdAt'])
+        && data.keys().hasOnly(['id', 'title', 'createdBy', 'participantIds', 'createdAt', 'updatedAt', 'lastMessage'])
+        && data.createdBy == request.auth.uid
+        && data.participantIds is list
+        && data.participantIds.size() >= 1 && data.participantIds.size() <= 25
+        && request.auth.uid in data.participantIds
+        && (!('title' in data) || (data.title is string && data.title.size() <= 120))
+        && (!('lastMessage' in data) || (data.lastMessage is string && data.lastMessage.size() <= 1000))
+        && data.createdAt is string && data.createdAt.size() <= 50
+        && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 50));
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['senderId', 'recipientId', 'content', 'createdAt'])
+        && data.keys().hasOnly(['id', 'conversationId', 'senderId', 'senderName', 'recipientId', 'content', 'createdAt', 'read'])
+        && data.senderId == request.auth.uid
+        && data.recipientId is string && isValidId(data.recipientId)
+        && (!('conversationId' in data) || (data.conversationId is string && isValidId(data.conversationId)))
+        && (!('senderName' in data) || (data.senderName is string && data.senderName.size() <= 50))
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 4000
+        && data.createdAt is string && data.createdAt.size() <= 50
+        && (!('read' in data) || data.read is bool);
+    }
+
+    match /conversations/{conversationId} {
+      allow get, list: if isOwner()
+        || (isSignedIn() && (resource.data.createdBy == request.auth.uid || (resource.data.participantIds is list && request.auth.uid in resource.data.participantIds)));
+      allow create: if isOwner()
+        || (isSignedIn() && isValidId(conversationId) && isValidConversation(incoming()));
+      allow update: if isOwner()
+        || (isSignedIn()
+          && isValidId(conversationId)
+          && (existing().createdBy == request.auth.uid || (existing().participantIds is list && request.auth.uid in existing().participantIds))
+          && incoming().createdBy == existing().createdBy
+          && incoming().createdAt == existing().createdAt
+          && incoming().participantIds == existing().participantIds
+          && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'updatedAt', 'lastMessage']));
+      allow delete: if isOwner()
+        || (isSignedIn() && isValidId(conversationId) && existing().createdBy == request.auth.uid);
+    }
+
+    match /messages/{messageId} {
+      allow get, list: if isOwner()
+        || (isSignedIn() && (resource.data.senderId == request.auth.uid || resource.data.recipientId == request.auth.uid));
+      allow create: if isOwner()
+        || (isSignedIn() && isValidId(messageId) && isValidMessage(incoming()));
+      allow update: if isOwner()
+        || (isSignedIn()
+          && isValidId(messageId)
+          && (existing().senderId == request.auth.uid || existing().recipientId == request.auth.uid)
+          && incoming().senderId == existing().senderId
+          && incoming().recipientId == existing().recipientId
+          && incoming().createdAt == existing().createdAt
+          && (
+            (existing().senderId == request.auth.uid
+              && incoming().content is string && incoming().content.size() >= 1 && incoming().content.size() <= 4000
+              && incoming().diff(existing()).affectedKeys().hasOnly(['content']))
+            ||
+            (existing().recipientId == request.auth.uid
+              && incoming().read is bool
+              && incoming().diff(existing()).affectedKeys().hasOnly(['read']))
+          ));
+      allow delete: if isOwner()
+        || (isSignedIn() && isValidId(messageId) && existing().senderId == request.auth.uid);
+    }
+
+    // -------------------------------------------------------------
+    // OWNER BACKUPS, SITE SETTINGS & AUDIT LOGS (STRICT OWNER ONLY)
+    // -------------------------------------------------------------
+    match /backups/{backupId} {
+      allow read, write: if isOwner() && isValidId(backupId);
+    }
+
+    match /site_settings/{settingId} {
+      allow get, list: if true;
+      allow create, update, delete: if isOwner() && isValidId(settingId);
+    }
+
+    match /audit_logs/{logId} {
+      allow read, write: if isOwner() && isValidId(logId);
+    }
+  }
+}
+

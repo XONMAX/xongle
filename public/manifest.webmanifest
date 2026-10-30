@@ -1,0 +1,17 @@
+{
+  "name": "Xongle",
+  "short_name": "Xongle",
+  "description": "Xongle (xongle.xyz) — Official Xongle web app and real-time search engine for public Xonddit communities, discussion threads, and comments.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090b0e",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

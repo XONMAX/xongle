@@ -1,0 +1,43 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+.secrets/
+
+# Private keys, certificates, and service account credentials
+*.pem
+*.key
+*.p12
+*.pfx
+*.cert
+*.crt
+*service-account*.json
+*firebase-adminsdk*.json
+*credentials*.json
+!firebase-applet-config.json
+!firebase-blueprint.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!metadata.json
+
+# Firebase & local emulators
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Local owner backup storage and audit logs (never commit)
+.backups-storage/
+Xongle-Backup-*.zip
+bkp_*.zip
+
+# GitHub workflows (requires elevated GitHub App workflow scopes)
+.github/workflows/
